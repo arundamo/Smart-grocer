@@ -80,6 +80,9 @@
 
       const inventoryByBarcode = new Map(inventory.map((item) => [item.barcode, item]));
       const storageKey = "smart-grocer-cart";
+      const SCANNER_FPS = 10;
+      const SCANNER_BOX_WIDTH = 220;
+      const SCANNER_BOX_HEIGHT = 120;
       let cart = JSON.parse(localStorage.getItem(storageKey) || "[]");
       let scannerInstance;
       let scannerActive = false;
@@ -108,16 +111,30 @@
           total += item.price;
           const li = document.createElement("li");
           li.className = "rounded-lg border border-slate-200 bg-slate-50 p-3";
-          li.innerHTML = `
-            <div class="flex items-start justify-between gap-3">
-              <div>
-                <p class="font-medium">${item.name}</p>
-                <p class="mt-1 text-sm font-semibold text-emerald-700">Aisle: ${item.aisle_location}</p>
-                <p class="mt-1 text-xs text-slate-600">Suggested pairing: ${item.suggested_pairing}</p>
-              </div>
-              <p class="shrink-0 text-sm font-semibold">₹${item.price.toFixed(2)}</p>
-            </div>
-          `;
+          const row = document.createElement("div");
+          row.className = "flex items-start justify-between gap-3";
+
+          const details = document.createElement("div");
+          const name = document.createElement("p");
+          name.className = "font-medium";
+          name.textContent = item.name;
+
+          const aisle = document.createElement("p");
+          aisle.className = "mt-1 text-sm font-semibold text-emerald-700";
+          aisle.textContent = `Aisle: ${item.aisle_location}`;
+
+          const pairing = document.createElement("p");
+          pairing.className = "mt-1 text-xs text-slate-600";
+          pairing.textContent = `Suggested pairing: ${item.suggested_pairing}`;
+
+          details.append(name, aisle, pairing);
+
+          const price = document.createElement("p");
+          price.className = "shrink-0 text-sm font-semibold";
+          price.textContent = `₹${item.price.toFixed(2)}`;
+
+          row.append(details, price);
+          li.appendChild(row);
           cartItemsEl.appendChild(li);
         });
 
@@ -150,7 +167,7 @@
         }
 
         if (typeof Html5Qrcode === "undefined") {
-          scannerStatusEl.textContent = "Scanner library failed to load. Please refresh and try again.";
+          scannerStatusEl.textContent = "Scanner library failed to load. Check your internet or ad blocker settings, then refresh.";
           return;
         }
 
@@ -167,7 +184,7 @@
         try {
           await scannerInstance.start(
             { facingMode: "environment" },
-            { fps: 10, qrbox: { width: 220, height: 120 } },
+            { fps: SCANNER_FPS, qrbox: { width: SCANNER_BOX_WIDTH, height: SCANNER_BOX_HEIGHT } },
             (decodedText) => {
               const item = inventoryByBarcode.get(decodedText.trim());
               if (!item) {
