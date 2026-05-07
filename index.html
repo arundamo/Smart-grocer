@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Grocer - Scan as You Go</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/html5-qrcode" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+  </head>
+  <body class="min-h-screen bg-slate-50 text-slate-900">
+    <main class="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-28 pt-4">
+      <header class="mb-4 flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-sm">
+        <h1 class="text-lg font-semibold">Store Name</h1>
+        <div class="flex items-center gap-2 text-slate-700" aria-label="Cart">
+          <span aria-hidden="true">🛒</span>
+          <span id="cart-count" class="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-800">0</span>
+        </div>
+      </header>
+
+      <section class="mb-4 rounded-xl bg-white p-4 shadow-sm">
+        <button
+          id="scan-btn"
+          class="w-full rounded-xl bg-emerald-600 px-4 py-4 text-lg font-semibold text-white shadow active:bg-emerald-700"
+          type="button"
+        >
+          Scan Item
+        </button>
+        <button
+          id="stop-scan-btn"
+          class="mt-2 hidden w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base font-semibold text-slate-700"
+          type="button"
+        >
+          Stop Scanning
+        </button>
+        <div id="scanner" class="mt-4 hidden overflow-hidden rounded-xl border border-slate-200"></div>
+        <p id="scanner-status" class="mt-3 text-sm text-slate-600">Tap "Scan Item" to open your camera.</p>
+      </section>
+
+      <section class="mb-4 rounded-xl bg-white p-4 shadow-sm">
+        <h2 class="mb-2 text-base font-semibold">Shopping Cart</h2>
+        <ul id="cart-items" class="space-y-3"></ul>
+        <p id="empty-state" class="text-sm text-slate-500">No items scanned yet.</p>
+      </section>
+
+      <section id="checkout-section" class="hidden rounded-xl bg-white p-4 shadow-sm">
+        <h2 class="text-base font-semibold">Checkout QR</h2>
+        <p class="mt-1 text-sm text-slate-600">Show this QR code to the cashier.</p>
+        <div id="checkout-qr" class="mt-3 flex justify-center"></div>
+      </section>
+    </main>
+
+    <footer class="fixed bottom-0 left-0 right-0 border-t border-slate-200 bg-white/95 p-4 backdrop-blur">
+      <div class="mx-auto flex w-full max-w-md items-center justify-between gap-3">
+        <p class="text-base font-semibold">Total: ₹<span id="cart-total">0.00</span></p>
+        <button
+          id="finish-btn"
+          type="button"
+          class="rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-indigo-300"
+          disabled
+        >
+          Finish Shopping
+        </button>
+      </div>
+    </footer>
+
+    <script>
+      const inventory = [
+        { barcode: "8901234567012", name: "Sona Masoori Rice, 5kg", price: 549, aisle_location: "Aisle 1", suggested_pairing: "Toor Dal, 1kg" },
+        { barcode: "8901234567013", name: "MDH Chana Masala", price: 85, aisle_location: "Aisle 4", suggested_pairing: "Kabuli Chana, 500g" },
+        { barcode: "8901234567014", name: "Fresh Cilantro", price: 20, aisle_location: "Produce 2", suggested_pairing: "Fresh Mint Leaves" },
+        { barcode: "8901234567015", name: "Mutton, 500g", price: 420, aisle_location: "Butcher 1", suggested_pairing: "Meat Masala" },
+        { barcode: "8901234567016", name: "Aashirvaad Atta, 5kg", price: 310, aisle_location: "Aisle 2", suggested_pairing: "Amul Ghee, 500ml" },
+        { barcode: "8901234567017", name: "Tata Salt, 1kg", price: 28, aisle_location: "Aisle 3", suggested_pairing: "Turmeric Powder" },
+        { barcode: "8901234567018", name: "Mother Dairy Curd, 400g", price: 45, aisle_location: "Dairy 1", suggested_pairing: "Boondi" },
+        { barcode: "8901234567019", name: "Parle-G Biscuits", price: 10, aisle_location: "Snacks 1", suggested_pairing: "Tea Powder" },
+        { barcode: "8901234567020", name: "Maggi Noodles", price: 16, aisle_location: "Aisle 5", suggested_pairing: "Mixed Vegetables" },
+        { barcode: "8901234567021", name: "Brooke Bond Red Label Tea, 500g", price: 295, aisle_location: "Beverages 1", suggested_pairing: "Parle-G Biscuits" }
+      ];
+
+      const inventoryByBarcode = new Map(inventory.map((item) => [item.barcode, item]));
+      const storageKey = "smart-grocer-cart";
+      let cart = JSON.parse(localStorage.getItem(storageKey) || "[]");
+      let scannerInstance;
+      let scannerActive = false;
+
+      const cartCountEl = document.getElementById("cart-count");
+      const cartTotalEl = document.getElementById("cart-total");
+      const cartItemsEl = document.getElementById("cart-items");
+      const emptyStateEl = document.getElementById("empty-state");
+      const scanBtnEl = document.getElementById("scan-btn");
+      const stopScanBtnEl = document.getElementById("stop-scan-btn");
+      const scannerEl = document.getElementById("scanner");
+      const scannerStatusEl = document.getElementById("scanner-status");
+      const finishBtnEl = document.getElementById("finish-btn");
+      const checkoutSectionEl = document.getElementById("checkout-section");
+      const checkoutQrEl = document.getElementById("checkout-qr");
+
+      function saveCart() {
+        localStorage.setItem(storageKey, JSON.stringify(cart));
+      }
+
+      function renderCart() {
+        cartItemsEl.innerHTML = "";
+        let total = 0;
+
+        cart.forEach((item) => {
+          total += item.price;
+          const li = document.createElement("li");
+          li.className = "rounded-lg border border-slate-200 bg-slate-50 p-3";
+          li.innerHTML = `
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="font-medium">${item.name}</p>
+                <p class="mt-1 text-sm font-semibold text-emerald-700">Aisle: ${item.aisle_location}</p>
+                <p class="mt-1 text-xs text-slate-600">Suggested pairing: ${item.suggested_pairing}</p>
+              </div>
+              <p class="shrink-0 text-sm font-semibold">₹${item.price.toFixed(2)}</p>
+            </div>
+          `;
+          cartItemsEl.appendChild(li);
+        });
+
+        emptyStateEl.classList.toggle("hidden", cart.length > 0);
+        cartCountEl.textContent = String(cart.length);
+        cartTotalEl.textContent = total.toFixed(2);
+        finishBtnEl.disabled = cart.length === 0;
+      }
+
+      async function stopScanner() {
+        if (!scannerActive || !scannerInstance) {
+          return;
+        }
+
+        try {
+          await scannerInstance.stop();
+          await scannerInstance.clear();
+        } catch (error) {
+          console.error("Unable to stop scanner", error);
+        }
+
+        scannerActive = false;
+        scannerEl.classList.add("hidden");
+        stopScanBtnEl.classList.add("hidden");
+      }
+
+      async function startScanner() {
+        if (scannerActive) {
+          return;
+        }
+
+        if (typeof Html5Qrcode === "undefined") {
+          scannerStatusEl.textContent = "Scanner library failed to load. Please refresh and try again.";
+          return;
+        }
+
+        checkoutSectionEl.classList.add("hidden");
+        checkoutQrEl.innerHTML = "";
+        scannerEl.classList.remove("hidden");
+        stopScanBtnEl.classList.remove("hidden");
+        scannerStatusEl.textContent = "Point your camera at a barcode.";
+
+        if (!scannerInstance) {
+          scannerInstance = new Html5Qrcode("scanner");
+        }
+
+        try {
+          await scannerInstance.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: { width: 220, height: 120 } },
+            (decodedText) => {
+              const item = inventoryByBarcode.get(decodedText.trim());
+              if (!item) {
+                scannerStatusEl.textContent = `Barcode ${decodedText} not found in store inventory.`;
+                return;
+              }
+
+              cart.push(item);
+              saveCart();
+              renderCart();
+              scannerStatusEl.textContent = `Added ${item.name} (${item.aisle_location}).`;
+            },
+            () => {}
+          );
+
+          scannerActive = true;
+        } catch (error) {
+          scannerStatusEl.textContent = "Unable to access camera. Please allow permission and try again.";
+          scannerEl.classList.add("hidden");
+          stopScanBtnEl.classList.add("hidden");
+          console.error("Scanner start failed", error);
+        }
+      }
+
+      function finishShopping() {
+        if (cart.length === 0) {
+          return;
+        }
+
+        stopScanner();
+        checkoutSectionEl.classList.remove("hidden");
+        checkoutQrEl.innerHTML = "";
+
+        const summary = {
+          created_at: new Date().toISOString(),
+          item_count: cart.length,
+          total: Number(cart.reduce((sum, item) => sum + item.price, 0).toFixed(2)),
+          items: cart.map(({ barcode, name, price, aisle_location }) => ({ barcode, name, price, aisle_location }))
+        };
+
+        new QRCode(checkoutQrEl, {
+          text: JSON.stringify(summary),
+          width: 220,
+          height: 220,
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      }
+
+      scanBtnEl.addEventListener("click", startScanner);
+      stopScanBtnEl.addEventListener("click", async () => {
+        await stopScanner();
+        scannerStatusEl.textContent = 'Scanner paused. Tap "Scan Item" to restart.';
+      });
+      finishBtnEl.addEventListener("click", finishShopping);
+
+      renderCart();
+      window.addEventListener("beforeunload", () => {
+        if (scannerActive) {
+          stopScanner();
+        }
+      });
+    </script>
+  </body>
+</html>
