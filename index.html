@@ -4,105 +4,247 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Smart Grocer - Scan as You Go</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Syne:wght@700&display=swap" rel="stylesheet" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+    <style>
+      :root {
+        --cream:       #F7F2EB;
+        --cream-dark:  #EDE6DA;
+        --card-bg:     #FFFDF8;
+        --sage:        #6B9467;
+        --sage-dark:   #5A7D56;
+        --sage-light:  #D4E8D0;
+        --charcoal:    #1E2B2C;
+        --warm-text:   #2D2416;
+        --warm-muted:  #8B7355;
+        --warm-border: #E8DDD0;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        background-color: var(--cream);
+        color: var(--warm-text);
+        font-family: 'DM Sans', sans-serif;
+      }
+
+      .font-heading { font-family: 'Syne', sans-serif; }
+
+      /* ── Scan-success pulse ── */
+      @keyframes checkPulse {
+        0%   { transform: scale(0.4); opacity: 0; }
+        40%  { transform: scale(1.2); opacity: 1; }
+        70%  { transform: scale(0.9); opacity: 1; }
+        100% { transform: scale(1);   opacity: 0; }
+      }
+      @keyframes ringExpand {
+        0%   { transform: scale(0.6); opacity: 0.7; }
+        100% { transform: scale(2.2); opacity: 0;   }
+      }
+
+      #scan-success { display: none; }
+      #scan-success.show { display: flex; }
+      #scan-success.show .check-circle { animation: checkPulse 1s ease-out forwards; }
+      #scan-success.show .check-ring   { animation: ringExpand  1s ease-out forwards; }
+
+      /* ── Cart card entrance ── */
+      @keyframes slideInDown {
+        from { opacity: 0; transform: translateY(-6px); }
+        to   { opacity: 1; transform: translateY(0);    }
+      }
+      .cart-card { animation: slideInDown 0.2s ease-out; }
+    </style>
   </head>
-  <body class="min-h-screen bg-slate-50 text-slate-900">
-    <main class="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-28 pt-4">
-      <header class="mb-4 flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-sm">
-        <h1 class="text-lg font-semibold">Store Name</h1>
-        <div class="flex items-center gap-2 text-slate-700" aria-label="Cart">
-          <span aria-hidden="true">🛒</span>
-          <span id="cart-count" class="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-800">0</span>
+  <body>
+    <main class="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 pb-36 pt-4">
+
+      <!-- ── Header ── -->
+      <header class="mb-4 flex items-center justify-between rounded-2xl px-5 py-3"
+              style="background:var(--card-bg);border:1px solid var(--warm-border);box-shadow:0 1px 6px rgba(45,36,22,0.07)">
+        <div>
+          <p class="text-xs font-medium" style="color:var(--warm-muted)">Welcome to</p>
+          <h1 class="font-heading text-lg font-bold leading-tight" style="color:var(--warm-text)">Store Name</h1>
+        </div>
+        <div class="flex items-center gap-2" aria-label="Cart">
+          <span class="text-xl" aria-hidden="true">🛒</span>
+          <span id="cart-count"
+                class="rounded-full px-2 py-0.5 text-xs font-bold"
+                style="background:var(--sage-light);color:var(--sage-dark)">0</span>
         </div>
       </header>
 
-      <section class="mb-4 rounded-xl bg-white p-4 shadow-sm">
-        <button
-          id="scan-btn"
-          class="w-full rounded-xl bg-emerald-600 px-4 py-4 text-lg font-semibold text-white shadow active:bg-emerald-700"
-          type="button"
-        >
-          Scan Item
+      <!-- ── Hero: Scan Zone ── -->
+      <section class="mb-4 rounded-2xl p-5"
+               style="background:var(--charcoal);box-shadow:0 6px 24px rgba(30,43,44,0.32)">
+        <div class="mb-4 flex items-start justify-between">
+          <div>
+            <h2 class="font-heading text-2xl font-bold text-white">Scan an Item</h2>
+            <p class="mt-0.5 text-sm" style="color:#89ABAF">Point your camera at any barcode</p>
+          </div>
+          <div class="mt-1 rounded-xl p-2.5" style="background:rgba(107,148,103,0.18)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+                 fill="none" stroke="#6B9467" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                 aria-hidden="true">
+              <path d="M3 9V6a2 2 0 0 1 2-2h2"/><path d="M15 4h2a2 2 0 0 1 2 2v3"/>
+              <path d="M3 15v3a2 2 0 0 0 2 2h2"/><path d="M15 20h2a2 2 0 0 0 2-2v-3"/>
+              <line x1="7" y1="8" x2="7" y2="16"/><line x1="10" y1="8" x2="10" y2="16"/>
+              <line x1="13" y1="8" x2="13" y2="16"/><line x1="17" y1="8" x2="17" y2="12"/>
+              <line x1="17" y1="14" x2="17" y2="16"/>
+            </svg>
+          </div>
+        </div>
+
+        <div id="scanner" class="mb-3 hidden overflow-hidden rounded-xl"
+             style="border:2px solid rgba(107,148,103,0.35)"></div>
+
+        <button id="scan-btn" type="button"
+                class="w-full rounded-xl py-4 text-base font-bold text-white transition-transform active:scale-95"
+                style="background:var(--sage);box-shadow:0 3px 12px rgba(107,148,103,0.45)">
+          📷 Start Scanning
         </button>
-        <button
-          id="stop-scan-btn"
-          class="mt-2 hidden w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base font-semibold text-slate-700"
-          type="button"
-        >
-          Stop Scanning
+        <button id="stop-scan-btn" type="button"
+                class="mt-2 hidden w-full rounded-xl py-3 text-sm font-semibold transition-transform active:scale-95"
+                style="background:rgba(255,255,255,0.09);color:#CBD5D6;border:1px solid rgba(255,255,255,0.14)">
+          ✕ Stop Camera
         </button>
-        <div id="scanner" class="mt-4 hidden overflow-hidden rounded-xl border border-slate-200"></div>
-        <p id="scanner-status" class="mt-3 text-sm text-slate-600">Tap "Scan Item" to open your camera.</p>
+
+        <p id="scanner-status" class="mt-3 text-center text-sm" style="color:#89ABAF">
+          Tap to open your camera
+        </p>
       </section>
 
-      <section class="mb-4 rounded-xl bg-white p-4 shadow-sm">
-        <h2 class="mb-2 text-base font-semibold">Shopping Cart</h2>
+      <!-- ── Cart ── -->
+      <section class="mb-4 rounded-2xl p-5"
+               style="background:var(--card-bg);border:1px solid var(--warm-border);box-shadow:0 1px 6px rgba(45,36,22,0.07)">
+        <div class="mb-4 flex items-center justify-between">
+          <h2 class="font-heading text-base font-bold" style="color:var(--warm-text)">Your Cart</h2>
+          <span id="cart-items-count" class="text-sm" style="color:var(--warm-muted)">0 items</span>
+        </div>
+
+        <!-- Friendly empty state -->
+        <div id="empty-state" class="flex flex-col items-center py-8 text-center">
+          <svg xmlns="http://www.w3.org/2000/svg" width="84" height="84" viewBox="0 0 84 84"
+               fill="none" aria-hidden="true">
+            <circle cx="42" cy="42" r="38" fill="var(--cream-dark)"/>
+            <path d="M26 30h5l6 20h18l6-16H33" stroke="var(--warm-muted)" stroke-width="2.5"
+                  stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            <circle cx="40" cy="56" r="2.5" fill="var(--warm-muted)"/>
+            <circle cx="52" cy="56" r="2.5" fill="var(--warm-muted)"/>
+            <path d="M37 38h12M37 43h9" stroke="var(--warm-border)" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <p class="font-heading mt-3 text-base font-bold" style="color:var(--warm-text)">Nothing here yet!</p>
+          <p class="mt-1 text-sm" style="color:var(--warm-muted)">Scan your first item above to get started 🌿</p>
+        </div>
+
         <ul id="cart-items" class="space-y-3"></ul>
-        <p id="empty-state" class="text-sm text-slate-500">No items scanned yet.</p>
       </section>
 
-      <section id="checkout-section" class="hidden rounded-xl bg-white p-4 shadow-sm">
-        <h2 class="text-base font-semibold">Checkout QR</h2>
-        <p class="mt-1 text-sm text-slate-600">Show this QR code to the cashier.</p>
-        <div id="checkout-qr" class="mt-3 flex justify-center"></div>
-      </section>
     </main>
 
-    <!-- Scan confirmation modal -->
-    <div
-      id="confirm-modal"
-      class="fixed inset-0 z-50 hidden items-end justify-center bg-black/40 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="confirm-modal-title"
-    >
-      <div class="w-full max-w-md rounded-t-2xl bg-white px-6 pb-8 pt-5 shadow-xl">
-        <h2 id="confirm-modal-title" class="mb-1 text-base font-semibold">Add to cart?</h2>
-        <p id="confirm-item-name" class="text-lg font-bold text-slate-900"></p>
-        <p id="confirm-item-aisle" class="mt-1 text-sm font-semibold text-emerald-700"></p>
-        <p id="confirm-item-pairing" class="mt-1 text-xs text-slate-600"></p>
-        <p id="confirm-item-price" class="mt-2 text-base font-semibold text-slate-900"></p>
+    <!-- ── Scan-success overlay ── -->
+    <div id="scan-success"
+         class="pointer-events-none fixed inset-0 z-40 items-center justify-center"
+         aria-hidden="true">
+      <div class="relative flex items-center justify-center">
+        <div class="check-ring absolute rounded-full"
+             style="width:80px;height:80px;background:rgba(107,148,103,0.3)"></div>
+        <div class="check-circle flex items-center justify-center rounded-full"
+             style="width:66px;height:66px;background:var(--sage);box-shadow:0 4px 24px rgba(107,148,103,0.55)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24"
+               fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"
+               aria-hidden="true">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Scan-confirm bottom sheet ── -->
+    <div id="confirm-modal"
+         class="fixed inset-0 z-50 hidden items-end justify-center"
+         style="background:rgba(30,43,44,0.65);backdrop-filter:blur(5px)"
+         role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+      <div class="w-full max-w-md rounded-t-3xl px-6 pb-8 pt-4"
+           style="background:var(--card-bg)">
+        <div class="mx-auto mb-5 h-1 w-10 rounded-full" style="background:var(--warm-border)"></div>
+        <p class="mb-1 text-xs font-semibold uppercase tracking-widest" style="color:var(--warm-muted)">
+          Found in inventory
+        </p>
+        <h2 id="confirm-modal-title" class="font-heading text-xl font-bold" style="color:var(--warm-text)"></h2>
+        <div class="mt-2 flex items-center gap-2">
+          <span id="confirm-item-aisle"
+                class="inline-block rounded-full px-3 py-0.5 text-xs font-semibold"
+                style="background:var(--sage-light);color:var(--sage-dark)"></span>
+        </div>
+        <p id="confirm-item-pairing" class="mt-2 text-sm" style="color:var(--warm-muted)"></p>
+        <p id="confirm-item-price" class="font-heading mt-4 text-3xl font-bold" style="color:var(--warm-text)"></p>
         <div class="mt-5 flex gap-3">
-          <button
-            id="confirm-add-btn"
-            type="button"
-            class="flex-1 rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white active:bg-emerald-700"
-          >
+          <button id="confirm-add-btn" type="button"
+                  class="flex-1 rounded-2xl py-4 text-base font-bold text-white transition-transform active:scale-95"
+                  style="background:var(--sage);box-shadow:0 3px 12px rgba(107,148,103,0.35)">
             Add to Cart
           </button>
-          <button
-            id="confirm-cancel-btn"
-            type="button"
-            class="flex-1 rounded-xl border border-slate-300 bg-white py-3 text-sm font-semibold text-slate-700 active:bg-slate-100"
-          >
+          <button id="confirm-cancel-btn" type="button"
+                  class="flex-1 rounded-2xl py-4 text-base font-semibold transition-transform active:scale-95"
+                  style="background:var(--cream-dark);color:var(--warm-text);border:1px solid var(--warm-border)">
             Cancel
           </button>
         </div>
       </div>
     </div>
 
-    <footer class="fixed bottom-0 left-0 right-0 border-t border-slate-200 bg-white/95 p-4 backdrop-blur">
-      <div class="mx-auto flex w-full max-w-md items-center justify-between gap-3">
-        <p class="text-base font-semibold">Total: ₹<span id="cart-total">0.00</span></p>
+    <!-- ── QR checkout bottom sheet ── -->
+    <div id="qr-modal"
+         class="fixed inset-0 z-50 hidden items-end justify-center"
+         style="background:rgba(30,43,44,0.65);backdrop-filter:blur(5px)"
+         role="dialog" aria-modal="true" aria-label="Checkout QR code">
+      <div class="w-full max-w-md rounded-t-3xl px-6 pb-8 pt-4"
+           style="background:var(--card-bg)">
+        <div class="mx-auto mb-5 h-1 w-10 rounded-full" style="background:var(--warm-border)"></div>
+        <h2 class="font-heading text-center text-xl font-bold" style="color:var(--warm-text)">
+          Checkout QR Code
+        </h2>
+        <p class="mt-1 text-center text-sm" style="color:var(--warm-muted)">
+          Show this to the cashier to complete your purchase
+        </p>
+        <div id="checkout-qr" class="mt-5 flex justify-center rounded-2xl p-5"
+             style="background:white"></div>
+        <button id="close-qr-btn" type="button"
+                class="mt-5 w-full rounded-2xl py-4 text-base font-semibold transition-transform active:scale-95"
+                style="background:var(--cream-dark);color:var(--warm-text);border:1px solid var(--warm-border)">
+          Done
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Sticky checkout footer ── -->
+    <footer class="fixed bottom-0 left-0 right-0"
+            style="background:var(--card-bg);border-top:1px solid var(--warm-border);box-shadow:0 -4px 20px rgba(45,36,22,0.09)">
+      <div class="mx-auto flex w-full max-w-md items-center justify-between gap-3 px-4 py-4">
+        <div>
+          <p class="text-xs font-medium" style="color:var(--warm-muted)">Cart Total</p>
+          <p class="font-heading text-2xl font-bold leading-tight" style="color:var(--warm-text)">
+            ₹<span id="cart-total">0.00</span>
+          </p>
+        </div>
         <div class="flex gap-2">
-          <button
-            id="reset-btn"
-            type="button"
-            class="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-40 active:bg-slate-100"
-            disabled
-            aria-label="Reset cart"
-          >
+          <button id="reset-btn" type="button"
+                  class="rounded-2xl px-4 py-3 text-sm font-semibold transition-transform active:scale-95
+                         disabled:cursor-not-allowed disabled:opacity-40"
+                  style="background:var(--cream-dark);color:var(--warm-text);border:1px solid var(--warm-border)"
+                  disabled aria-label="Reset cart">
             🗑 Reset
           </button>
-          <button
-            id="finish-btn"
-            type="button"
-            class="rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-indigo-300"
-            disabled
-          >
-            Finish Shopping
+          <button id="finish-btn" type="button"
+                  class="rounded-2xl px-5 py-3 text-sm font-bold text-white transition-transform active:scale-95
+                         disabled:cursor-not-allowed disabled:opacity-50"
+                  style="background:var(--sage);box-shadow:0 2px 10px rgba(107,148,103,0.35)"
+                  disabled>
+            Generate QR 🎫
           </button>
         </div>
       </div>
@@ -110,159 +252,178 @@
 
     <script>
       const inventory = [
-        { 
-          barcode: "8901234567012", 
-          name: "Sona Masoori Rice 5kg", 
-          price: 14.99, 
-          aisle: "Aisle 1", 
-          pairing: "Pairs perfectly with Dal Tadka or Sambhar!" 
-        },
-        { 
-          barcode: "8901234567013", 
-          name: "MDH Chana Masala", 
-          price: 2.49, 
-          aisle: "Aisle 4", 
-          pairing: "Suggested: Buy chickpeas and tomatoes." 
-        },
-        { 
-          barcode: "8901234567014", 
-          name: "Fresh Cilantro", 
-          price: 0.99, 
-          aisle: "Produce 2", 
-          pairing: "Essential for garnishing your curries!" 
-        },
-        { 
-          barcode: "8901234567015", 
-          name: "Mutton, 500g", 
-          price: 4.50, 
-          aisle: "Butcher 1", 
-          pairing: "Perfect for Mutton Curry or Biryani!" 
-        }
+        { barcode: "8901234567012", name: "Sona Masoori Rice 5kg", price: 14.99, aisle: "Aisle 1",   pairing: "Pairs perfectly with Dal Tadka or Sambhar!" },
+        { barcode: "8901234567013", name: "MDH Chana Masala",      price: 2.49,  aisle: "Aisle 4",   pairing: "Suggested: Buy chickpeas and tomatoes." },
+        { barcode: "8901234567014", name: "Fresh Cilantro",        price: 0.99,  aisle: "Produce 2", pairing: "Essential for garnishing your curries!" },
+        { barcode: "8901234567015", name: "Mutton, 500g",          price: 4.50,  aisle: "Butcher 1", pairing: "Perfect for Mutton Curry or Biryani!" },
       ];
-
       const inventoryByBarcode = new Map(inventory.map((item) => [item.barcode, item]));
-      const storageKey = "smart-grocer-cart";
-      const SCANNER_FPS = 10;
-      const SCANNER_BOX_WIDTH = 220;
-      const SCANNER_BOX_HEIGHT = 120;
-      let cart = [];
+      const storageKey   = "smart-grocer-cart";
+      const SCANNER_FPS  = 10;
+      const SCANNER_BOX_W = 220;
+      const SCANNER_BOX_H = 120;
+      let cart          = [];
       let scannerInstance;
       let scannerActive = false;
-      let pendingItem = null;
+      let pendingItem   = null;
 
-      const cartCountEl = document.getElementById("cart-count");
-      const cartTotalEl = document.getElementById("cart-total");
-      const cartItemsEl = document.getElementById("cart-items");
-      const emptyStateEl = document.getElementById("empty-state");
-      const scanBtnEl = document.getElementById("scan-btn");
-      const stopScanBtnEl = document.getElementById("stop-scan-btn");
-      const scannerEl = document.getElementById("scanner");
-      const scannerStatusEl = document.getElementById("scanner-status");
-      const finishBtnEl = document.getElementById("finish-btn");
-      const resetBtnEl = document.getElementById("reset-btn");
-      const checkoutSectionEl = document.getElementById("checkout-section");
-      const checkoutQrEl = document.getElementById("checkout-qr");
-      const confirmModalEl = document.getElementById("confirm-modal");
-      const confirmItemNameEl = document.getElementById("confirm-item-name");
-      const confirmItemAisleEl = document.getElementById("confirm-item-aisle");
+      // ── DOM refs ──
+      const cartCountEl       = document.getElementById("cart-count");
+      const cartItemsCountEl  = document.getElementById("cart-items-count");
+      const cartTotalEl       = document.getElementById("cart-total");
+      const cartItemsEl       = document.getElementById("cart-items");
+      const emptyStateEl      = document.getElementById("empty-state");
+      const scanBtnEl         = document.getElementById("scan-btn");
+      const stopScanBtnEl     = document.getElementById("stop-scan-btn");
+      const scannerEl         = document.getElementById("scanner");
+      const scannerStatusEl   = document.getElementById("scanner-status");
+      const finishBtnEl       = document.getElementById("finish-btn");
+      const resetBtnEl        = document.getElementById("reset-btn");
+      const checkoutQrEl      = document.getElementById("checkout-qr");
+      const confirmModalEl    = document.getElementById("confirm-modal");
+      const confirmItemNameEl    = document.getElementById("confirm-modal-title");
+      const confirmItemAisleEl   = document.getElementById("confirm-item-aisle");
       const confirmItemPairingEl = document.getElementById("confirm-item-pairing");
-      const confirmItemPriceEl = document.getElementById("confirm-item-price");
-      const confirmAddBtnEl = document.getElementById("confirm-add-btn");
-      const confirmCancelBtnEl = document.getElementById("confirm-cancel-btn");
+      const confirmItemPriceEl   = document.getElementById("confirm-item-price");
+      const confirmAddBtnEl      = document.getElementById("confirm-add-btn");
+      const confirmCancelBtnEl   = document.getElementById("confirm-cancel-btn");
+      const qrModalEl         = document.getElementById("qr-modal");
+      const closeQrBtnEl      = document.getElementById("close-qr-btn");
+      const scanSuccessEl     = document.getElementById("scan-success");
 
+      // ── Load saved cart ──
       try {
-        const savedCart = JSON.parse(localStorage.getItem(storageKey) || "[]");
-        if (Array.isArray(savedCart)) {
-          cart = savedCart;
+        const saved = JSON.parse(localStorage.getItem(storageKey) || "[]");
+        if (Array.isArray(saved)) {
+          cart = saved.map((item) => ({ ...item, qty: item.qty ?? 1 }));
         }
       } catch (error) {
         console.warn("Stored cart was invalid and has been reset.", error);
         localStorage.removeItem(storageKey);
       }
 
+      // ── Persistence ──
       function saveCart() {
         localStorage.setItem(storageKey, JSON.stringify(cart));
       }
 
+      // ── XSS-safe HTML escape ──
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+      }
+
+      // ── Cart render ──
       function renderCart() {
         cartItemsEl.innerHTML = "";
-        let total = 0;
+        let total     = 0;
+        let itemCount = 0;
 
         cart.forEach((item, index) => {
-          total += item.price;
+          const lineTotal = item.price * item.qty;
+          total     += lineTotal;
+          itemCount += item.qty;
+
           const li = document.createElement("li");
-          li.className = "rounded-lg border border-slate-200 bg-slate-50 p-3";
-          const row = document.createElement("div");
-          row.className = "flex items-start justify-between gap-3";
+          li.className = "cart-card rounded-2xl p-4";
+          li.style.cssText = "background:var(--cream);border:1px solid var(--warm-border)";
+          li.innerHTML = `
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-semibold leading-snug" style="color:var(--warm-text)">${escapeHtml(item.name)}</p>
+                <span class="mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-semibold"
+                      style="background:var(--sage-light);color:var(--sage-dark)">${escapeHtml(item.aisle)}</span>
+              </div>
+              <p class="font-heading shrink-0 text-base font-bold" style="color:var(--warm-text)">
+                ₹${lineTotal.toFixed(2)}
+              </p>
+            </div>
+            <div class="mt-3 flex items-center justify-between">
+              <p class="text-xs" style="color:var(--warm-muted)">₹${item.price.toFixed(2)} each</p>
+              <div class="flex items-center gap-3">
+                <button type="button" data-index="${index}" data-action="dec"
+                        class="qty-btn flex h-8 w-8 items-center justify-center rounded-full text-base font-bold transition-transform active:scale-90"
+                        style="background:var(--cream-dark);border:1px solid var(--warm-border);color:var(--warm-text)"
+                        aria-label="Decrease quantity of ${escapeHtml(item.name)}">−</button>
+                <span class="font-heading w-5 text-center text-base font-bold" style="color:var(--warm-text)">${item.qty}</span>
+                <button type="button" data-index="${index}" data-action="inc"
+                        class="qty-btn flex h-8 w-8 items-center justify-center rounded-full text-base font-bold transition-transform active:scale-90"
+                        style="background:var(--sage-light);border:1px solid rgba(107,148,103,0.25);color:var(--sage-dark)"
+                        aria-label="Increase quantity of ${escapeHtml(item.name)}">+</button>
+              </div>
+            </div>
+          `;
 
-          const details = document.createElement("div");
-          details.className = "flex-1 min-w-0";
-          const name = document.createElement("p");
-          name.className = "font-medium";
-          name.textContent = item.name;
-
-          const aisle = document.createElement("p");
-          aisle.className = "mt-1 text-sm font-semibold text-emerald-700";
-          aisle.textContent = `Aisle: ${item.aisle}`;
-
-          const pairing = document.createElement("p");
-          pairing.className = "mt-1 text-xs text-slate-600";
-          pairing.textContent = `Suggested pairing: ${item.pairing}`;
-
-          details.append(name, aisle, pairing);
-
-          const right = document.createElement("div");
-          right.className = "flex shrink-0 flex-col items-end gap-2";
-
-          const price = document.createElement("p");
-          price.className = "text-sm font-semibold";
-          price.textContent = `₹${item.price.toFixed(2)}`;
-
-          const removeBtn = document.createElement("button");
-          removeBtn.type = "button";
-          removeBtn.className = "rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-600 active:bg-rose-100";
-          removeBtn.textContent = "Remove";
-          removeBtn.setAttribute("aria-label", `Remove ${item.name}`);
-          removeBtn.addEventListener("click", () => removeFromCart(index));
-
-          right.append(price, removeBtn);
-          row.append(details, right);
-          li.appendChild(row);
           cartItemsEl.appendChild(li);
         });
 
+        cartItemsEl.querySelectorAll(".qty-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const i = parseInt(btn.dataset.index, 10);
+            if (btn.dataset.action === "inc") incrementQty(i);
+            else decrementQty(i);
+          });
+        });
+
         emptyStateEl.classList.toggle("hidden", cart.length > 0);
-        cartCountEl.textContent = String(cart.length);
-        cartTotalEl.textContent = total.toFixed(2);
-        finishBtnEl.disabled = cart.length === 0;
-        resetBtnEl.disabled = cart.length === 0;
+        cartCountEl.textContent      = String(itemCount);
+        cartItemsCountEl.textContent = `${itemCount} item${itemCount !== 1 ? "s" : ""}`;
+        cartTotalEl.textContent      = total.toFixed(2);
+        finishBtnEl.disabled         = cart.length === 0;
+        resetBtnEl.disabled          = cart.length === 0;
       }
 
-      function removeFromCart(index) {
-        const removed = cart.splice(index, 1)[0];
+      // ── Cart mutations ──
+      function addToCart(item) {
+        const existing = cart.find((c) => c.barcode === item.barcode);
+        if (existing) {
+          existing.qty += 1;
+        } else {
+          cart.push({ ...item, qty: 1 });
+        }
         saveCart();
         renderCart();
-        scannerStatusEl.textContent = `Removed ${removed.name} from cart.`;
+      }
+
+      function incrementQty(index) {
+        cart[index].qty += 1;
+        saveCart();
+        renderCart();
+      }
+
+      function decrementQty(index) {
+        if (cart[index].qty > 1) {
+          cart[index].qty -= 1;
+        } else {
+          cart.splice(index, 1);
+        }
+        saveCart();
+        renderCart();
       }
 
       function resetCart() {
-        if (!confirm("Clear all items and start a new cart?")) {
-          return;
-        }
+        if (!confirm("Clear all items and start a new cart?")) return;
         cart = [];
         saveCart();
         renderCart();
-        checkoutSectionEl.classList.add("hidden");
         checkoutQrEl.innerHTML = "";
-        scannerStatusEl.textContent = 'Cart cleared. Tap "Scan Item" to start scanning.';
+        scannerStatusEl.textContent = 'Cart cleared. Tap "Start Scanning" to begin.';
       }
 
+      // ── Scan-success animation ──
+      function showScanSuccess() {
+        scanSuccessEl.classList.add("show");
+        setTimeout(() => scanSuccessEl.classList.remove("show"), 1100);
+      }
+
+      // ── Confirm modal ──
       function showConfirmModal(item) {
         pendingItem = item;
-        confirmItemNameEl.textContent = item.name;
-        confirmItemAisleEl.textContent = `Aisle: ${item.aisle}`;
-        confirmItemPairingEl.textContent = `Suggested pairing: ${item.pairing}`;
-        confirmItemPriceEl.textContent = `₹${item.price.toFixed(2)}`;
+        confirmItemNameEl.textContent    = item.name;
+        confirmItemAisleEl.textContent   = item.aisle;
+        confirmItemPairingEl.textContent = item.pairing;
+        confirmItemPriceEl.textContent   = `₹${item.price.toFixed(2)}`;
         confirmModalEl.classList.remove("hidden");
         confirmModalEl.classList.add("flex");
         confirmAddBtnEl.focus();
@@ -274,35 +435,38 @@
         pendingItem = null;
       }
 
-      async function stopScanner() {
-        if (!scannerActive || !scannerInstance) {
-          return;
-        }
+      // ── QR modal ──
+      function showQrModal() {
+        qrModalEl.classList.remove("hidden");
+        qrModalEl.classList.add("flex");
+      }
 
+      function hideQrModal() {
+        qrModalEl.classList.add("hidden");
+        qrModalEl.classList.remove("flex");
+      }
+
+      // ── Scanner ──
+      async function stopScanner() {
+        if (!scannerActive || !scannerInstance) return;
         try {
           await scannerInstance.stop();
           await scannerInstance.clear();
         } catch (error) {
           console.error("Unable to stop scanner", error);
         }
-
         scannerActive = false;
         scannerEl.classList.add("hidden");
         stopScanBtnEl.classList.add("hidden");
       }
 
       async function startScanner() {
-        if (scannerActive) {
-          return;
-        }
-
+        if (scannerActive) return;
         if (typeof Html5Qrcode === "undefined") {
           scannerStatusEl.textContent = "Scanner library unavailable. Check your connection and browser settings, then refresh.";
           return;
         }
 
-        checkoutSectionEl.classList.add("hidden");
-        checkoutQrEl.innerHTML = "";
         scannerEl.classList.remove("hidden");
         stopScanBtnEl.classList.remove("hidden");
         scannerStatusEl.textContent = "Point your camera at a barcode.";
@@ -314,27 +478,22 @@
         try {
           await scannerInstance.start(
             { facingMode: "environment" },
-            { fps: SCANNER_FPS, qrbox: { width: SCANNER_BOX_WIDTH, height: SCANNER_BOX_HEIGHT } },
+            { fps: SCANNER_FPS, qrbox: { width: SCANNER_BOX_W, height: SCANNER_BOX_H } },
             (decodedText) => {
               const barcode = decodedText.trim();
               if (!/^\d{13}$/.test(barcode)) {
                 scannerStatusEl.textContent = `Invalid barcode format: ${barcode}.`;
                 return;
               }
-
               const item = inventoryByBarcode.get(barcode);
               if (!item) {
                 scannerStatusEl.textContent = `Barcode ${barcode} not found in store inventory.`;
                 return;
               }
-
               showConfirmModal(item);
             },
-            (errorMessage) => {
-              console.debug("Scan attempt info:", errorMessage);
-            }
+            (errorMessage) => { console.debug("Scan attempt info:", errorMessage); }
           );
-
           scannerActive = true;
         } catch (error) {
           scannerStatusEl.textContent = "Unable to access camera. Please allow permission and try again.";
@@ -344,41 +503,43 @@
         }
       }
 
+      // ── Finish / QR generation ──
       function finishShopping() {
-        if (cart.length === 0) {
-          return;
-        }
+        if (cart.length === 0) return;
         if (typeof QRCode === "undefined") {
           scannerStatusEl.textContent = "Checkout QR library unavailable. Check your connection and refresh.";
           return;
         }
 
         stopScanner();
-        checkoutSectionEl.classList.remove("hidden");
         checkoutQrEl.innerHTML = "";
 
-        const summary = {
+        const totalQty = cart.reduce((s, i) => s + i.qty, 0);
+        const totalAmt = Number(cart.reduce((s, i) => s + i.price * i.qty, 0).toFixed(2));
+        const summary  = {
           created_at: new Date().toISOString(),
-          item_count: cart.length,
-          total: Number(cart.reduce((sum, item) => sum + item.price, 0).toFixed(2)),
-          items: cart.map(({ barcode, name, price, aisle }) => ({ barcode, name, price, aisle }))
+          item_count: totalQty,
+          total: totalAmt,
+          items: cart.map(({ barcode, name, price, aisle, qty }) => ({ barcode, name, price, aisle, qty })),
         };
 
         new QRCode(checkoutQrEl, {
           text: JSON.stringify(summary),
           width: 220,
           height: 220,
-          correctLevel: QRCode.CorrectLevel.M
+          correctLevel: QRCode.CorrectLevel.M,
         });
+
+        showQrModal();
       }
 
+      // ── Event listeners ──
       confirmAddBtnEl.addEventListener("click", () => {
         if (!pendingItem) return;
         const item = pendingItem;
         hideConfirmModal();
-        cart.push(item);
-        saveCart();
-        renderCart();
+        addToCart(item);
+        showScanSuccess();
         scannerStatusEl.textContent = `Added ${item.name} (${item.aisle}).`;
       });
 
@@ -394,10 +555,15 @@
         }
       });
 
+      qrModalEl.addEventListener("click", (e) => {
+        if (e.target === qrModalEl) hideQrModal();
+      });
+
+      closeQrBtnEl.addEventListener("click", hideQrModal);
       scanBtnEl.addEventListener("click", startScanner);
       stopScanBtnEl.addEventListener("click", async () => {
         await stopScanner();
-        scannerStatusEl.textContent = 'Scanner paused. Tap "Scan Item" to restart.';
+        scannerStatusEl.textContent = 'Scanner paused. Tap "Start Scanning" to restart.';
       });
       resetBtnEl.addEventListener("click", resetCart);
       finishBtnEl.addEventListener("click", finishShopping);
