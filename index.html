@@ -50,17 +50,61 @@
       </section>
     </main>
 
+    <!-- Scan confirmation modal -->
+    <div
+      id="confirm-modal"
+      class="fixed inset-0 z-50 hidden flex items-end justify-center bg-black/40 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-modal-title"
+    >
+      <div class="w-full max-w-md rounded-t-2xl bg-white px-6 pb-8 pt-5 shadow-xl">
+        <h2 id="confirm-modal-title" class="mb-1 text-base font-semibold">Add to cart?</h2>
+        <p id="confirm-item-name" class="text-lg font-bold text-slate-900"></p>
+        <p id="confirm-item-aisle" class="mt-1 text-sm font-semibold text-emerald-700"></p>
+        <p id="confirm-item-pairing" class="mt-1 text-xs text-slate-600"></p>
+        <p id="confirm-item-price" class="mt-2 text-base font-semibold text-slate-900"></p>
+        <div class="mt-5 flex gap-3">
+          <button
+            id="confirm-add-btn"
+            type="button"
+            class="flex-1 rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white active:bg-emerald-700"
+          >
+            Add to Cart
+          </button>
+          <button
+            id="confirm-cancel-btn"
+            type="button"
+            class="flex-1 rounded-xl border border-slate-300 bg-white py-3 text-sm font-semibold text-slate-700 active:bg-slate-100"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
     <footer class="fixed bottom-0 left-0 right-0 border-t border-slate-200 bg-white/95 p-4 backdrop-blur">
       <div class="mx-auto flex w-full max-w-md items-center justify-between gap-3">
         <p class="text-base font-semibold">Total: ₹<span id="cart-total">0.00</span></p>
-        <button
-          id="finish-btn"
-          type="button"
-          class="rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-indigo-300"
-          disabled
-        >
-          Finish Shopping
-        </button>
+        <div class="flex gap-2">
+          <button
+            id="reset-btn"
+            type="button"
+            class="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-40 active:bg-slate-100"
+            disabled
+            aria-label="Reset cart"
+          >
+            🗑 Reset
+          </button>
+          <button
+            id="finish-btn"
+            type="button"
+            class="rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-indigo-300"
+            disabled
+          >
+            Finish Shopping
+          </button>
+        </div>
       </div>
     </footer>
 
@@ -104,6 +148,7 @@
       let cart = [];
       let scannerInstance;
       let scannerActive = false;
+      let pendingItem = null;
 
       const cartCountEl = document.getElementById("cart-count");
       const cartTotalEl = document.getElementById("cart-total");
@@ -114,8 +159,16 @@
       const scannerEl = document.getElementById("scanner");
       const scannerStatusEl = document.getElementById("scanner-status");
       const finishBtnEl = document.getElementById("finish-btn");
+      const resetBtnEl = document.getElementById("reset-btn");
       const checkoutSectionEl = document.getElementById("checkout-section");
       const checkoutQrEl = document.getElementById("checkout-qr");
+      const confirmModalEl = document.getElementById("confirm-modal");
+      const confirmItemNameEl = document.getElementById("confirm-item-name");
+      const confirmItemAisleEl = document.getElementById("confirm-item-aisle");
+      const confirmItemPairingEl = document.getElementById("confirm-item-pairing");
+      const confirmItemPriceEl = document.getElementById("confirm-item-price");
+      const confirmAddBtnEl = document.getElementById("confirm-add-btn");
+      const confirmCancelBtnEl = document.getElementById("confirm-cancel-btn");
 
       try {
         const savedCart = JSON.parse(localStorage.getItem(storageKey) || "[]");
@@ -135,7 +188,7 @@
         cartItemsEl.innerHTML = "";
         let total = 0;
 
-        cart.forEach((item) => {
+        cart.forEach((item, index) => {
           total += item.price;
           const li = document.createElement("li");
           li.className = "rounded-lg border border-slate-200 bg-slate-50 p-3";
@@ -143,6 +196,7 @@
           row.className = "flex items-start justify-between gap-3";
 
           const details = document.createElement("div");
+          details.className = "flex-1 min-w-0";
           const name = document.createElement("p");
           name.className = "font-medium";
           name.textContent = item.name;
@@ -157,11 +211,22 @@
 
           details.append(name, aisle, pairing);
 
+          const right = document.createElement("div");
+          right.className = "flex shrink-0 flex-col items-end gap-2";
+
           const price = document.createElement("p");
-          price.className = "shrink-0 text-sm font-semibold";
+          price.className = "text-sm font-semibold";
           price.textContent = `₹${item.price.toFixed(2)}`;
 
-          row.append(details, price);
+          const removeBtn = document.createElement("button");
+          removeBtn.type = "button";
+          removeBtn.className = "rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-600 active:bg-rose-100";
+          removeBtn.textContent = "Remove";
+          removeBtn.setAttribute("aria-label", `Remove ${item.name}`);
+          removeBtn.addEventListener("click", () => removeFromCart(index));
+
+          right.append(price, removeBtn);
+          row.append(details, right);
           li.appendChild(row);
           cartItemsEl.appendChild(li);
         });
@@ -170,6 +235,43 @@
         cartCountEl.textContent = String(cart.length);
         cartTotalEl.textContent = total.toFixed(2);
         finishBtnEl.disabled = cart.length === 0;
+        resetBtnEl.disabled = cart.length === 0;
+      }
+
+      function removeFromCart(index) {
+        const removed = cart.splice(index, 1)[0];
+        saveCart();
+        renderCart();
+        scannerStatusEl.textContent = `Removed ${removed.name} from cart.`;
+      }
+
+      function resetCart() {
+        if (!confirm("Clear all items and start a new cart?")) {
+          return;
+        }
+        cart = [];
+        saveCart();
+        renderCart();
+        checkoutSectionEl.classList.add("hidden");
+        checkoutQrEl.innerHTML = "";
+        scannerStatusEl.textContent = 'Cart cleared. Tap "Scan Item" to start scanning.';
+      }
+
+      function showConfirmModal(item) {
+        pendingItem = item;
+        confirmItemNameEl.textContent = item.name;
+        confirmItemAisleEl.textContent = `Aisle: ${item.aisle}`;
+        confirmItemPairingEl.textContent = `Suggested pairing: ${item.pairing}`;
+        confirmItemPriceEl.textContent = `₹${item.price.toFixed(2)}`;
+        confirmModalEl.classList.remove("hidden");
+        confirmModalEl.classList.add("flex");
+        confirmAddBtnEl.focus();
+      }
+
+      function hideConfirmModal() {
+        confirmModalEl.classList.add("hidden");
+        confirmModalEl.classList.remove("flex");
+        pendingItem = null;
       }
 
       async function stopScanner() {
@@ -226,10 +328,7 @@
                 return;
               }
 
-              cart.push(item);
-              saveCart();
-              renderCart();
-              scannerStatusEl.textContent = `Added ${item.name} (${item.aisle}).`;
+              showConfirmModal(item);
             },
             (errorMessage) => {
               console.debug("Scan attempt info:", errorMessage);
@@ -273,11 +372,34 @@
         });
       }
 
+      confirmAddBtnEl.addEventListener("click", () => {
+        if (!pendingItem) return;
+        const item = pendingItem;
+        hideConfirmModal();
+        cart.push(item);
+        saveCart();
+        renderCart();
+        scannerStatusEl.textContent = `Added ${item.name} (${item.aisle}).`;
+      });
+
+      confirmCancelBtnEl.addEventListener("click", () => {
+        hideConfirmModal();
+        scannerStatusEl.textContent = "Scan cancelled. Point your camera at a barcode.";
+      });
+
+      confirmModalEl.addEventListener("click", (e) => {
+        if (e.target === confirmModalEl) {
+          hideConfirmModal();
+          scannerStatusEl.textContent = "Scan cancelled. Point your camera at a barcode.";
+        }
+      });
+
       scanBtnEl.addEventListener("click", startScanner);
       stopScanBtnEl.addEventListener("click", async () => {
         await stopScanner();
         scannerStatusEl.textContent = 'Scanner paused. Tap "Scan Item" to restart.';
       });
+      resetBtnEl.addEventListener("click", resetCart);
       finishBtnEl.addEventListener("click", finishShopping);
 
       renderCart();
