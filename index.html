@@ -78,7 +78,7 @@
           name: "MDH Chana Masala", 
           price: 2.49, 
           aisle: "Aisle 4", 
-          pairing: "Suggested: Buy 1kg Chicken and Heavy Cream." 
+          pairing: "Suggested: Buy chickpeas and tomatoes." 
         },
         { 
           barcode: "8901234567014", 
@@ -92,7 +92,7 @@
           name: "Mutton, 500g", 
           price: 4.50, 
           aisle: "Butcher 1", 
-          pairing: "Try this with Curd Rice!" 
+          pairing: "Perfect for Mutton Curry or Biryani!" 
         }
       ];
 
@@ -215,7 +215,7 @@
             { fps: SCANNER_FPS, qrbox: { width: SCANNER_BOX_WIDTH, height: SCANNER_BOX_HEIGHT } },
             (decodedText) => {
               const barcode = decodedText.trim();
-              if (!/^\d{8,14}$/.test(barcode)) {
+              if (!/^\d{13}$/.test(barcode)) {
                 scannerStatusEl.textContent = `Invalid barcode format: ${barcode}.`;
                 return;
               }
