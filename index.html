@@ -180,7 +180,9 @@
               renderCart();
               scannerStatusEl.textContent = `Added ${item.name} (${item.aisle_location}).`;
             },
-            () => {}
+            (errorMessage) => {
+              console.debug("Scan attempt info:", errorMessage);
+            }
           );
 
           scannerActive = true;
@@ -224,11 +226,6 @@
       finishBtnEl.addEventListener("click", finishShopping);
 
       renderCart();
-      window.addEventListener("beforeunload", () => {
-        if (scannerActive) {
-          stopScanner();
-        }
-      });
     </script>
   </body>
 </html>
