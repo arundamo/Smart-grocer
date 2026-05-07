@@ -83,7 +83,7 @@
       const SCANNER_FPS = 10;
       const SCANNER_BOX_WIDTH = 220;
       const SCANNER_BOX_HEIGHT = 120;
-      let cart = JSON.parse(localStorage.getItem(storageKey) || "[]");
+      let cart = [];
       let scannerInstance;
       let scannerActive = false;
 
@@ -98,6 +98,16 @@
       const finishBtnEl = document.getElementById("finish-btn");
       const checkoutSectionEl = document.getElementById("checkout-section");
       const checkoutQrEl = document.getElementById("checkout-qr");
+
+      try {
+        const savedCart = JSON.parse(localStorage.getItem(storageKey) || "[]");
+        if (Array.isArray(savedCart)) {
+          cart = savedCart;
+        }
+      } catch (error) {
+        console.warn("Stored cart was invalid and has been reset.", error);
+        localStorage.removeItem(storageKey);
+      }
 
       function saveCart() {
         localStorage.setItem(storageKey, JSON.stringify(cart));
@@ -167,7 +177,7 @@
         }
 
         if (typeof Html5Qrcode === "undefined") {
-          scannerStatusEl.textContent = "Scanner library failed to load. Check your internet or ad blocker settings, then refresh.";
+          scannerStatusEl.textContent = "Scanner library unavailable. Check your connection and browser settings, then refresh.";
           return;
         }
 
@@ -186,9 +196,15 @@
             { facingMode: "environment" },
             { fps: SCANNER_FPS, qrbox: { width: SCANNER_BOX_WIDTH, height: SCANNER_BOX_HEIGHT } },
             (decodedText) => {
-              const item = inventoryByBarcode.get(decodedText.trim());
+              const barcode = decodedText.trim();
+              if (!/^\\d{8,14}$/.test(barcode)) {
+                scannerStatusEl.textContent = `Invalid barcode format: ${barcode}.`;
+                return;
+              }
+
+              const item = inventoryByBarcode.get(barcode);
               if (!item) {
-                scannerStatusEl.textContent = `Barcode ${decodedText} not found in store inventory.`;
+                scannerStatusEl.textContent = `Barcode ${barcode} not found in store inventory.`;
                 return;
               }
 
@@ -213,6 +229,10 @@
 
       function finishShopping() {
         if (cart.length === 0) {
+          return;
+        }
+        if (typeof QRCode === "undefined") {
+          scannerStatusEl.textContent = "Checkout QR library unavailable. Check your connection and refresh.";
           return;
         }
 
