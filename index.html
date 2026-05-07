@@ -66,16 +66,34 @@
 
     <script>
       const inventory = [
-        { barcode: "8901234567012", name: "Sona Masoori Rice, 5kg", price: 549, aisle_location: "Aisle 1", suggested_pairing: "Toor Dal, 1kg" },
-        { barcode: "8901234567013", name: "MDH Chana Masala", price: 85, aisle_location: "Aisle 4", suggested_pairing: "Kabuli Chana, 500g" },
-        { barcode: "8901234567014", name: "Fresh Cilantro", price: 20, aisle_location: "Produce 2", suggested_pairing: "Fresh Mint Leaves" },
-        { barcode: "8901234567015", name: "Mutton, 500g", price: 420, aisle_location: "Butcher 1", suggested_pairing: "Meat Masala" },
-        { barcode: "8901234567016", name: "Aashirvaad Atta, 5kg", price: 310, aisle_location: "Aisle 2", suggested_pairing: "Amul Ghee, 500ml" },
-        { barcode: "8901234567017", name: "Tata Salt, 1kg", price: 28, aisle_location: "Aisle 3", suggested_pairing: "Turmeric Powder" },
-        { barcode: "8901234567018", name: "Mother Dairy Curd, 400g", price: 45, aisle_location: "Dairy 1", suggested_pairing: "Boondi" },
-        { barcode: "8901234567019", name: "Parle-G Biscuits", price: 10, aisle_location: "Snacks 1", suggested_pairing: "Tea Powder" },
-        { barcode: "8901234567020", name: "Maggi Noodles", price: 16, aisle_location: "Aisle 5", suggested_pairing: "Mixed Vegetables" },
-        { barcode: "8901234567021", name: "Brooke Bond Red Label Tea, 500g", price: 295, aisle_location: "Beverages 1", suggested_pairing: "Parle-G Biscuits" }
+        { 
+          barcode: "12345678", 
+          name: "Sona Masoori Rice 5kg", 
+          price: 14.99, 
+          aisle: "Aisle 4 (Back Left)", 
+          pairing: "Pairs perfectly with Dal Tadka or Sambhar!" 
+        },
+        { 
+          barcode: "87654321", 
+          name: "MDH Butter Chicken Masala", 
+          price: 2.49, 
+          aisle: "Aisle 2 (Spices)", 
+          pairing: "Suggested: Buy 1kg Chicken and Heavy Cream." 
+        },
+        { 
+          barcode: "11223344", 
+          name: "Fresh Cilantro (1 Bunch)", 
+          price: 0.99, 
+          aisle: "Produce Section (Front)", 
+          pairing: "Essential for garnishing your curries!" 
+        },
+        { 
+          barcode: "55667788", 
+          name: "Priya Mango Pickle (300g)", 
+          price: 4.50, 
+          aisle: "Aisle 1 (Pickles & Sauces)", 
+          pairing: "Try this with Curd Rice!" 
+        }
       ];
 
       const inventoryByBarcode = new Map(inventory.map((item) => [item.barcode, item]));
@@ -131,11 +149,11 @@
 
           const aisle = document.createElement("p");
           aisle.className = "mt-1 text-sm font-semibold text-emerald-700";
-          aisle.textContent = `Aisle: ${item.aisle_location}`;
+          aisle.textContent = `Aisle: ${item.aisle}`;
 
           const pairing = document.createElement("p");
           pairing.className = "mt-1 text-xs text-slate-600";
-          pairing.textContent = `Suggested pairing: ${item.suggested_pairing}`;
+          pairing.textContent = `Suggested pairing: ${item.pairing}`;
 
           details.append(name, aisle, pairing);
 
@@ -211,7 +229,7 @@
               cart.push(item);
               saveCart();
               renderCart();
-              scannerStatusEl.textContent = `Added ${item.name} (${item.aisle_location}).`;
+              scannerStatusEl.textContent = `Added ${item.name} (${item.aisle}).`;
             },
             (errorMessage) => {
               console.debug("Scan attempt info:", errorMessage);
@@ -244,7 +262,7 @@
           created_at: new Date().toISOString(),
           item_count: cart.length,
           total: Number(cart.reduce((sum, item) => sum + item.price, 0).toFixed(2)),
-          items: cart.map(({ barcode, name, price, aisle_location }) => ({ barcode, name, price, aisle_location }))
+          items: cart.map(({ barcode, name, price, aisle }) => ({ barcode, name, price, aisle }))
         };
 
         new QRCode(checkoutQrEl, {
