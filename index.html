@@ -6,7 +6,7 @@
     <title>Smart Grocer - Scan as You Go</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Syne:wght@700&display=swap" rel="stylesheet" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
@@ -257,7 +257,6 @@
         { barcode: "8901234567014", name: "Fresh Cilantro",        price: 0.99,  aisle: "Produce 2", pairing: "Essential for garnishing your curries!" },
         { barcode: "8901234567015", name: "Mutton, 500g",          price: 4.50,  aisle: "Butcher 1", pairing: "Perfect for Mutton Curry or Biryani!" },
       ];
-
       const inventoryByBarcode = new Map(inventory.map((item) => [item.barcode, item]));
       const storageKey   = "smart-grocer-cart";
       const SCANNER_FPS  = 10;
@@ -296,7 +295,7 @@
       try {
         const saved = JSON.parse(localStorage.getItem(storageKey) || "[]");
         if (Array.isArray(saved)) {
-          cart = saved.map((item) => ({ ...item, qty: item.qty || 1 }));
+          cart = saved.map((item) => ({ ...item, qty: item.qty ?? 1 }));
         }
       } catch (error) {
         console.warn("Stored cart was invalid and has been reset.", error);
