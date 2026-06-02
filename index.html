@@ -176,7 +176,8 @@
         </p>
         <span id="confirm-demo-badge"
               class="hidden mb-2 inline-block rounded-full px-3 py-0.5 text-xs font-bold uppercase tracking-wide"
-              style="background:#FEF3C7;color:#92400E;border:1px solid #FDE68A">
+              style="background:#FEF3C7;color:#92400E;border:1px solid #FDE68A"
+              aria-label="Demo product — data is illustrative only">
           ✦ Demo Product
         </span>
         <h2 id="confirm-modal-title" class="font-heading text-xl font-bold" style="color:var(--warm-text)"></h2>
@@ -287,16 +288,16 @@
         const prices   = [0.99, 1.49, 1.99, 2.49, 2.99, 3.49, 3.99, 4.50, 5.99, 6.99, 7.49, 8.99];
 
         // Deterministic hash so the same barcode always yields the same product
-        let h = 0;
+        let hash = 0;
         for (let i = 0; i < barcode.length; i++) {
-          h = (Math.imul(h, 31) + barcode.charCodeAt(i)) >>> 0;
+          hash = (Math.imul(hash, 31) + barcode.charCodeAt(i)) >>> 0;
         }
         return {
           barcode,
-          name:    names  [h             % names.length],
-          price:   prices [(h >>> 4)     % prices.length],
-          aisle:   aisles [(h >>> 8)     % aisles.length],
-          pairing: pairings[(h >>> 12)   % pairings.length],
+          name:    names  [hash             % names.length],
+          price:   prices [(hash >>> 4)     % prices.length],
+          aisle:   aisles [(hash >>> 8)     % aisles.length],
+          pairing: pairings[(hash >>> 12)   % pairings.length],
           isDemo:  true,
         };
       }
@@ -527,6 +528,7 @@
             (decodedText) => {
               const barcode = decodedText.trim();
               if (barcode.length < 4) {
+                // Reject obviously malformed reads (real barcodes are at least 4 characters: EAN-8, UPC-E, etc.)
                 scannerStatusEl.textContent = `Invalid barcode: ${barcode}.`;
                 return;
               }
