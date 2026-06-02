@@ -174,6 +174,11 @@
         <p class="mb-1 text-xs font-semibold uppercase tracking-widest" style="color:var(--warm-muted)">
           Found in inventory
         </p>
+        <span id="confirm-demo-badge"
+              class="hidden mb-2 inline-block rounded-full px-3 py-0.5 text-xs font-bold uppercase tracking-wide"
+              style="background:#FEF3C7;color:#92400E;border:1px solid #FDE68A">
+          ✦ Demo Product
+        </span>
         <h2 id="confirm-modal-title" class="font-heading text-xl font-bold" style="color:var(--warm-text)"></h2>
         <div class="mt-2 flex items-center gap-2">
           <span id="confirm-item-aisle"
@@ -258,6 +263,43 @@
         { barcode: "8901234567015", name: "Mutton, 500g",          price: 4.50,  aisle: "Butcher 1", pairing: "Perfect for Mutton Curry or Biryani!" },
       ];
       const inventoryByBarcode = new Map(inventory.map((item) => [item.barcode, item]));
+
+      // ── Demo product generator (for barcodes not in inventory) ──
+      function generateDemoProduct(barcode) {
+        const names = [
+          "Organic Basmati Rice 1kg",    "Amul Butter 500g",      "Tata Salt 1kg",
+          "Maggi Noodles 70g",           "Haldiram's Namkeen 200g","Parle-G Biscuits 800g",
+          "Dove Soap 100g",              "Colgate Toothpaste 150g","Head & Shoulders 200ml",
+          "Lipton Green Tea 25 bags",    "Aashirvaad Atta 5kg",    "Fortune Sunflower Oil 1L",
+          "Amul Cheese Slices 200g",     "MTR Upma Mix 500g",      "Tropicana Orange Juice 1L",
+        ];
+        const aisles   = ["Aisle 1","Aisle 2","Aisle 3","Aisle 4","Aisle 5",
+                          "Produce 1","Produce 2","Dairy","Bakery","Frozen Foods"];
+        const pairings = [
+          "A household essential — always good to have!",
+          "Try pairing with complementary items in the store.",
+          "A popular choice among shoppers this season.",
+          "Stock up while supplies last!",
+          "Great with everyday meals and snacks.",
+          "Freshly restocked — grab it while you can!",
+          "A great value buy for the whole family.",
+        ];
+        const prices   = [0.99, 1.49, 1.99, 2.49, 2.99, 3.49, 3.99, 4.50, 5.99, 6.99, 7.49, 8.99];
+
+        // Deterministic hash so the same barcode always yields the same product
+        let h = 0;
+        for (let i = 0; i < barcode.length; i++) {
+          h = (Math.imul(h, 31) + barcode.charCodeAt(i)) >>> 0;
+        }
+        return {
+          barcode,
+          name:    names  [h             % names.length],
+          price:   prices [(h >>> 4)     % prices.length],
+          aisle:   aisles [(h >>> 8)     % aisles.length],
+          pairing: pairings[(h >>> 12)   % pairings.length],
+          isDemo:  true,
+        };
+      }
       const storageKey   = "smart-grocer-cart";
       const SCANNER_FPS  = 10;
       const SCANNER_BOX_W = 220;
@@ -418,12 +460,15 @@
       }
 
       // ── Confirm modal ──
+      const confirmDemoBadgeEl = document.getElementById("confirm-demo-badge");
+
       function showConfirmModal(item) {
         pendingItem = item;
         confirmItemNameEl.textContent    = item.name;
         confirmItemAisleEl.textContent   = item.aisle;
         confirmItemPairingEl.textContent = item.pairing;
         confirmItemPriceEl.textContent   = `₹${item.price.toFixed(2)}`;
+        confirmDemoBadgeEl.classList.toggle("hidden", !item.isDemo);
         confirmModalEl.classList.remove("hidden");
         confirmModalEl.classList.add("flex");
         confirmAddBtnEl.focus();
@@ -481,15 +526,11 @@
             { fps: SCANNER_FPS, qrbox: { width: SCANNER_BOX_W, height: SCANNER_BOX_H } },
             (decodedText) => {
               const barcode = decodedText.trim();
-              if (!/^\d{13}$/.test(barcode)) {
-                scannerStatusEl.textContent = `Invalid barcode format: ${barcode}.`;
+              if (barcode.length < 4) {
+                scannerStatusEl.textContent = `Invalid barcode: ${barcode}.`;
                 return;
               }
-              const item = inventoryByBarcode.get(barcode);
-              if (!item) {
-                scannerStatusEl.textContent = `Barcode ${barcode} not found in store inventory.`;
-                return;
-              }
+              const item = inventoryByBarcode.get(barcode) || generateDemoProduct(barcode);
               showConfirmModal(item);
             },
             (errorMessage) => { console.debug("Scan attempt info:", errorMessage); }
